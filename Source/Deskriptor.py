@@ -1,0 +1,2 @@
+class StringValidate:
+    pass
