@@ -6,7 +6,8 @@ import sys
 from getpass import getuser
 
 class Task:
-    def __init__(self, task_title: str, task_description: str = "no description", crtime: datetime = datetime.now(), uptime: datetime = datetime.now(), status: int = 0) -> None:
+    def __init__(self, task_title: str, task_description: str = "no description", crtime: datetime = datetime.now(),
+                 uptime: datetime = datetime.now(), status: int = 0) -> None:
         self.title = task_title
         self.description = task_description
         self.createdAt = crtime.strftime("%d-%m-%Y, %H:%M:%S")
@@ -23,24 +24,28 @@ class TaskJsonHandler:
         self.file_name = join(self.SOURCE_PATH, f"task_of_{getuser()}.json")
         self.__create_file()
     
-    def __is_file_exists(self) -> bool:
+    def __file_not_exists(self) -> bool:
         return not basename(self.file_name) in set(listdir(self.SOURCE_PATH))
     
     def __create_file(self) -> None:
-        if self.__is_file_exists():
+        if self.__file_not_exists():
             obj = dict(in_progress = dict(), todo = dict(), complited = dict(), src = dict(task_id = 0))
             with open(self.file_name, "w", encoding="utf-8") as file:
                 json.dump(obj, file, ensure_ascii=False, indent=4)
     
-    def add(self, task_title: str, status: int = 0):
-        with open(self.file_name) as file:
+    def add(self, task_title: str, status: int = 0) -> None:
+        if status not in self.TASK_STATUS:
+            print("Error, status not found")
+            return #add raise Error
+        with open(self.file_name, "r+", encoding="utf-8") as file:
             data = json.load(file)
-        task = Task(task_title, status=status)
-        if status in self.TASK_STATUS and data["src"]["task_id"] < self.MAX_ITEM:
+            if data["src"]["task_id"] >= self.MAX_ITEM:
+                print("Error, item limit")
+                return #add raise Error
+            task = Task(task_title, status=status)
             data[self.TASK_STATUS[status]][data["src"]["task_id"]] = task.__dict__
             data["src"]["task_id"] += 1
-        
-        with open(self.file_name, "w", encoding="utf-8") as file:
+            file.seek(0)
             json.dump(data, file, ensure_ascii=False, indent=4)
 
 if __name__ == "__main__":
