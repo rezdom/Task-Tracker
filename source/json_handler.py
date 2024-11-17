@@ -1,22 +1,14 @@
 import json
-from datetime import datetime
 from os import listdir
 from os.path import join, basename
 import sys
 from getpass import getuser
 
-class Task:
-    def __init__(self, task_title: str, task_description: str = "no description", crtime: datetime = datetime.now(),
-                 uptime: datetime = datetime.now(), status: int = 0) -> None:
-        self.title = task_title
-        self.description = task_description
-        self.createdAt = crtime.strftime("%d-%m-%Y, %H:%M:%S")
-        self.updatedAt = uptime.strftime("%d-%m-%Y, %H:%M:%S")
-        self.status = status
-
+from utils.task import Task
+from utils.app_exeptions import TaskLimitError
 
 class TaskJsonHandler:
-    SOURCE_PATH = join("..","Source")
+    SOURCE_PATH = join("..","data")
     TASK_STATUS = {0: "todo", 1: "in_progress", 2: "comlited"}
     MAX_ITEM = 1e5
 
@@ -33,17 +25,20 @@ class TaskJsonHandler:
             with open(self.file_name, "w", encoding="utf-8") as file:
                 json.dump(obj, file, ensure_ascii=False, indent=4)
     
+    @staticmethod
+    def __date_to_str(data: dict) -> dict:
+        for key in data:
+            if key in ("createdAt", "updatedAt"):
+                data[key] = data[key].strftime("%d-%m-%Y, %H:%M:%S")
+        return data
+    
     def add(self, task_title: str, status: int = 0) -> None:
-        if status not in self.TASK_STATUS:
-            print("Error, status not found")
-            return #add raise Error
         with open(self.file_name, "r+", encoding="utf-8") as file:
             data = json.load(file)
             if data["src"]["task_id"] >= self.MAX_ITEM:
-                print("Error, item limit")
-                return #add raise Error
+                raise TaskLimitError(int(self.MAX_ITEM))
             task = Task(task_title, status=status)
-            data[self.TASK_STATUS[status]][data["src"]["task_id"]] = task.__dict__
+            data[self.TASK_STATUS[status]][data["src"]["task_id"]] = self.__date_to_str(task.__dict__)
             data["src"]["task_id"] += 1
             file.seek(0)
             json.dump(data, file, ensure_ascii=False, indent=4)
