@@ -14,7 +14,7 @@ class TaskJsonHandler:
     MAX_ITEM = 1e4
 
     def __init__(self) -> None:
-        self.file_name = join(self.SOURCE_PATH, f"task_of_{getuser()}.json")
+        self.file_name = join(self.SOURCE_PATH, f"{getuser()}'s_tasks.json")
         self.__create_file()
     
     def __file_not_exists(self) -> bool:
@@ -22,7 +22,7 @@ class TaskJsonHandler:
     
     def __create_file(self) -> None:
         if self.__file_not_exists():
-            obj = dict(in_progress = dict(), todo = dict(), complited = dict(), src = dict(task_id = 0))
+            obj = dict(in_progress = dict(), todo = dict(), complited = dict(), src = dict(task_id = 0, del_task_id = []))
             with open(self.file_name, "w", encoding="utf-8") as file:
                 json.dump(obj, file, ensure_ascii=False, indent=4)
     
@@ -33,35 +33,46 @@ class TaskJsonHandler:
                 data[key] = data[key].strftime("%d-%m-%Y, %H:%M:%S")
         return data
     
+    @staticmethod
+    def __check_id(task_id: int) -> str:
+        if not isinstance(task_id, int):
+                raise TypeError(
+                 f"The object is of type [{type(task_id).__name__}], "
+                "but a [integer] object was expected."
+            )
+        return str(task_id)
+    
+    @staticmethod
+    def __get_task_from_json(data: dict, task_id: str) -> dict:
+        task = None
+        for status in data:
+            if task_id in data[status]:
+                task = data[status][task_id]
+                break
+        if task is None:
+            raise ValueError(f"The provided ID does not exist in the database.")
+        return task
+    
     def add(self, task_title: str, status: int = 0) -> None:
         with open(self.file_name, "r+", encoding="utf-8") as file:
             data = json.load(file)
             if data["src"]["task_id"] >= self.MAX_ITEM:
                 raise TaskLimitError(int(self.MAX_ITEM))
             task = Task(task_title, status=status)
-            data[self.TASK_STATUS[status]][data["src"]["task_id"]] = self.__date_to_str(task.__dict__)
-            data["src"]["task_id"] += 1
+
+            if len(data["src"]["del_task_id"]) != 0:
+                data[self.TASK_STATUS[status]][data["src"]["del_task_id"].pop()] = self.__date_to_str(task.__dict__)
+            else:
+                data[self.TASK_STATUS[status]][data["src"]["task_id"]] = self.__date_to_str(task.__dict__)
+                data["src"]["task_id"] += 1
             file.seek(0)
             json.dump(data, file, ensure_ascii=False, indent=4)
     
     def update(self, task_id: int, task_description: str = None, task_title: str = None) -> None:
+        task_id = self.__check_id(task_id)
         with open(self.file_name, "r+", encoding="utf-8") as file:
             data = json.load(file)
-            if not isinstance(task_id, int):
-                raise TypeError(
-                 f"The object is of type [{type(task_id).__name__}], "
-                "but a [integer] object was expected."
-            )
-            task_id = str(task_id)
-
-            task = None
-            for status in data:
-                if task_id in data[status]:
-                    task = data[status][task_id]
-                    break
-            if task is None:
-                raise ValueError(f"The provided ID does not exist in the database.")
-            
+            task = self.__get_task_from_json(data, task_id)
             task = Task(
                 task["title"],
                 task["description"],
@@ -83,16 +94,35 @@ class TaskJsonHandler:
             json.dump(data, file, ensure_ascii=False, indent=4)
             #The file.truncate() clears remaining content in the file, 
             #preventing leftover data from being appended after updating the JSON.
-            file.truncate() 
+            file.truncate()
+    
+    def delete(self, task_id: int) -> None:
+        task_id = self.__check_id(task_id)
+        with open(self.file_name, "r+", encoding="utf-8") as file:
+            data = json.load(file)
+            not_find_task = True
+            for status in data:
+                if task_id in data[status]:
+                    data["src"]["del_task_id"].append(task_id)
+                    del data[status][task_id]
+                    not_find_task = False
+                    break
+            if not_find_task is None:
+                raise ValueError(f"The provided ID does not exist in the database.")
 
+            file.seek(0)
+            json.dump(data, file, ensure_ascii=False, indent=4)
+            file.truncate()
+            
 
 if __name__ == "__main__":
     data = [int(item) if item.isdigit() else item for item in sys.argv]
     task_handler = TaskJsonHandler()
     commands = {
-        "add": (task_handler.add,1, 2),
-        "update": (task_handler.update,2, 3),
-        "update_title": (task_handler.update,2, 2)
+        "add": (task_handler.add, 1, 2),
+        "update": (task_handler.update, 2, 3),
+        "delete": (task_handler.delete, 1, 1),
+        "update_title": (task_handler.update, 2, 2)
     }
     try:
         if data[1] in commands and len(data) - 2 in range(commands[data[1]][1],commands[data[1]][2]+1):
