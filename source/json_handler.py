@@ -9,8 +9,8 @@ from utils.app_exeptions import TaskLimitError
 
 class TaskJsonHandler:
     SOURCE_PATH = join("..","data")
-    TASK_STATUS = {0: "todo", 1: "in_progress", 2: "comlited"}
-    MAX_ITEM = 1e5
+    TASK_STATUS = {0: "todo", 1: "in_progress", 2: "complited"}
+    MAX_ITEM = 1e4
 
     def __init__(self) -> None:
         self.file_name = join(self.SOURCE_PATH, f"task_of_{getuser()}.json")
@@ -44,10 +44,13 @@ class TaskJsonHandler:
             json.dump(data, file, ensure_ascii=False, indent=4)
 
 if __name__ == "__main__":
-    data = sys.argv
+    data = [int(item) if item.isdigit() else item for item in sys.argv]
     task_handler = TaskJsonHandler()
     commands = {
-        "add": (task_handler.add, 1)
+        "add": (task_handler.add, 2)
     }
-    if data[1] in commands and len(data) - 2 == commands[data[1]][1]:
-        commands[data[1]][0](*data[2:])
+    try:
+        if data[1] in commands and len(data) - 2 in range(1,commands[data[1]][1]+1):
+            commands[data[1]][0](*data[2:])
+    except Exception as e:
+        print(e)
