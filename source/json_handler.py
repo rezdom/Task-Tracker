@@ -117,7 +117,7 @@ class TaskJsonHandler:
 
             self.__dump_json(file, data)
     
-    def mark_in_progress(self, task_id: int) -> None:
+    def __mark_task_status(self, task_id: int, target_status: int) -> None:
         task_id = self.__check_id(task_id)
         with open(self.file_name, "r+", encoding="utf-8") as file:
             data = json.load(file)
@@ -137,11 +137,17 @@ class TaskJsonHandler:
                 datetime.strptime(task["updatedAt"], "%d-%m-%Y, %H:%M:%S"),
                 task["status"]
             )
-            task.status = 1
+            task.status = target_status
             task.updatedAt = datetime.now()
             data[self.TASK_STATUS[task.status]][task_id] = self.__date_to_str(task.__dict__)
 
             self.__dump_json(file, data)
+    
+    def mark_in_progress(self, task_id: int) -> None:
+        self.__mark_task_status(task_id, 1)
+    
+    def mark_done(self, task_id: int) -> None:
+        self.__mark_task_status(task_id, 2)
 
 if __name__ == "__main__":
     data = [int(item) if item.isdigit() else item for item in sys.argv]
@@ -151,6 +157,7 @@ if __name__ == "__main__":
         "update": (task_handler.update, 2, 3),
         "delete": (task_handler.delete, 1, 1),
         "mark-in-progress": (task_handler.mark_in_progress, 1, 1),
+        "mark-done": (task_handler.mark_done, 1, 1),
         "update-title": (task_handler.update, 2, 2)
     }
     try:
