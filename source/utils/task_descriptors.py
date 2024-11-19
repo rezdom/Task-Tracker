@@ -9,10 +9,10 @@ class TitleValidator:
                  f"The object is of type [{type(value).__name__}], "
                 "but a [string] object was expected."
             )
-        check = len(value.split(" "))
-        if check <= 0 or check > 8:
+        check = len(value)
+        if check <= 4 or check > 64:
             raise ValueError(
-                "The string of title must be between 1 and 8 words long."
+                "The string of title must be between 4 and 64 chars long."
             )
         instance.__dict__[self.name] = value
     def __get__(self, instance, owner):
@@ -30,10 +30,10 @@ class DescriptorValidator:
                 "but a [string] object was expected."
             )
         if value != "no description":
-            check = len(value.split(" "))
-            if check < 8 or check > 256:
+            check = len(value)
+            if check < 16 or check > 2048:
                 raise ValueError(
-                    "The string of description must be between 8 and 256 words long."
+                    "The string of description must be between 16 and 2048 chars long."
                 )
         instance.__dict__[self.name] = value
     def __get__(self, instance, owner):

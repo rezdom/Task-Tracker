@@ -4,14 +4,14 @@ from os.path import join, basename
 import sys
 from getpass import getuser
 from datetime import datetime
-from typing import TextIO
+from typing import TextIO, Optional
 
 from utils.task import Task
 from utils.app_exeptions import TaskLimitError
 
 class TaskJsonHandler:
     SOURCE_PATH = join("..","data")
-    TASK_STATUS = {0: "todo", 1: "in_progress", 2: "complited"}
+    TASK_STATUS = {0: "todo", 1: "in_progress", 2: "done"}
     MAX_ITEM = 1e4
 
     def __init__(self) -> None:
@@ -23,7 +23,7 @@ class TaskJsonHandler:
     
     def __create_file(self) -> None:
         if self.__file_not_exists():
-            obj = dict(in_progress = dict(), todo = dict(), complited = dict(), src = dict(task_id = 0, del_task_id = []))
+            obj = dict(in_progress = dict(), todo = dict(), done = dict(), src = dict(task_id = 0, del_task_id = []))
             with open(self.file_name, "w", encoding="utf-8") as file:
                 json.dump(obj, file, ensure_ascii=False, indent=4)
     
@@ -89,7 +89,6 @@ class TaskJsonHandler:
                 datetime.strptime(task["updatedAt"], "%d-%m-%Y, %H:%M:%S"),
                 task["status"]
             )
-
             if task_description is None and task_title is None:
                 raise ValueError("Arguments were not provided.")
             else:
@@ -148,6 +147,15 @@ class TaskJsonHandler:
     
     def mark_done(self, task_id: int) -> None:
         self.__mark_task_status(task_id, 2)
+    
+    def get_task_list(self, target_status: str = None) -> Optional[dict]:
+        with open(self.file_name, "r", encoding="utf-8") as file:
+            data = json.load(file)
+            if target_status is None:
+                return data
+            elif target_status in list(self.TASK_STATUS.values()):
+                return data[target_status]
+            raise ValueError("The status you are trying to retrieve does not exist.")
 
 if __name__ == "__main__":
     data = [int(item) if item.isdigit() else item for item in sys.argv]
@@ -158,6 +166,7 @@ if __name__ == "__main__":
         "delete": (task_handler.delete, 1, 1),
         "mark-in-progress": (task_handler.mark_in_progress, 1, 1),
         "mark-done": (task_handler.mark_done, 1, 1),
+        "list": (task_handler.get_task_list, 0, 1),
         "update-title": (task_handler.update, 2, 2)
     }
     try:
