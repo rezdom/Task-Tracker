@@ -4,6 +4,7 @@ from os.path import join, basename
 import sys
 from getpass import getuser
 from datetime import datetime
+from typing import TextIO
 
 from utils.task import Task
 from utils.app_exeptions import TaskLimitError
@@ -53,6 +54,14 @@ class TaskJsonHandler:
             raise ValueError(f"The provided ID does not exist in the database.")
         return task
     
+    @staticmethod
+    def __dump_json(file: TextIO, data: dict) -> None:
+        file.seek(0)
+        json.dump(data, file, ensure_ascii=False, indent=4)
+        #The file.truncate() clears remaining content in the file, 
+        #preventing leftover data from being appended after updating the JSON.
+        file.truncate()
+    
     def add(self, task_title: str, status: int = 0) -> None:
         with open(self.file_name, "r+", encoding="utf-8") as file:
             data = json.load(file)
@@ -90,11 +99,7 @@ class TaskJsonHandler:
                     task.title = task_title
                 task.updatedAt = datetime.now()
             data[self.TASK_STATUS[task.status]][task_id] = self.__date_to_str(task.__dict__)
-            file.seek(0)
-            json.dump(data, file, ensure_ascii=False, indent=4)
-            #The file.truncate() clears remaining content in the file, 
-            #preventing leftover data from being appended after updating the JSON.
-            file.truncate()
+            self.__dump_json(file, data)
     
     def delete(self, task_id: int) -> None:
         task_id = self.__check_id(task_id)
@@ -110,10 +115,33 @@ class TaskJsonHandler:
             if not_find_task is None:
                 raise ValueError(f"The provided ID does not exist in the database.")
 
-            file.seek(0)
-            json.dump(data, file, ensure_ascii=False, indent=4)
-            file.truncate()
+            self.__dump_json(file, data)
+    
+    def mark_in_progress(self, task_id: int) -> None:
+        task_id = self.__check_id(task_id)
+        with open(self.file_name, "r+", encoding="utf-8") as file:
+            data = json.load(file)
+            task = None
+            for status in data:
+                if task_id in data[status]:
+                    task = data[status][task_id]
+                    del data[status][task_id]
+                    break
+            if task is None:
+                raise ValueError(f"The provided ID does not exist in the database.")
             
+            task = Task(
+                task["title"],
+                task["description"],
+                datetime.strptime(task["createdAt"], "%d-%m-%Y, %H:%M:%S"),
+                datetime.strptime(task["updatedAt"], "%d-%m-%Y, %H:%M:%S"),
+                task["status"]
+            )
+            task.status = 1
+            task.updatedAt = datetime.now()
+            data[self.TASK_STATUS[task.status]][task_id] = self.__date_to_str(task.__dict__)
+
+            self.__dump_json(file, data)
 
 if __name__ == "__main__":
     data = [int(item) if item.isdigit() else item for item in sys.argv]
@@ -122,7 +150,8 @@ if __name__ == "__main__":
         "add": (task_handler.add, 1, 2),
         "update": (task_handler.update, 2, 3),
         "delete": (task_handler.delete, 1, 1),
-        "update_title": (task_handler.update, 2, 2)
+        "mark-in-progress": (task_handler.mark_in_progress, 1, 1),
+        "update-title": (task_handler.update, 2, 2)
     }
     try:
         if data[1] in commands and len(data) - 2 in range(commands[data[1]][1],commands[data[1]][2]+1):
