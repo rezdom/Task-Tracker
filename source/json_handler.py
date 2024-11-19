@@ -15,7 +15,9 @@ class TaskJsonHandler:
     MAX_ITEM = 1e4
 
     def __init__(self) -> None:
-        self.file_name = join(self.SOURCE_PATH, f"{getuser()}'s_tasks.json")
+        user_name = getuser()
+        self.file_name = join(self.SOURCE_PATH, f"{user_name}'s_tasks.json")
+        self.source_file = join(self.SOURCE_PATH, f"{user_name}'s_sources_for_app.json")
         self.__create_file()
     
     def __file_not_exists(self) -> bool:
@@ -23,9 +25,11 @@ class TaskJsonHandler:
     
     def __create_file(self) -> None:
         if self.__file_not_exists():
-            obj = dict(in_progress = dict(), todo = dict(), done = dict(), src = dict(task_id = 0, del_task_id = []))
-            with open(self.file_name, "w", encoding="utf-8") as file:
+            obj = dict(in_progress = dict(), todo = dict(), done = dict())
+            src_obj = dict(task_id = 0, del_task_id = [])
+            with open(self.file_name, "w", encoding="utf-8") as file, open(self.source_file, "w", encoding="utf-8") as src_file:
                 json.dump(obj, file, ensure_ascii=False, indent=4)
+                json.dump(src_obj, src_file, ensure_ascii=False, indent=4)
     
     @staticmethod
     def __date_to_str(data: dict) -> dict:
@@ -63,19 +67,20 @@ class TaskJsonHandler:
         file.truncate()
     
     def add(self, task_title: str, status: int = 0) -> None:
-        with open(self.file_name, "r+", encoding="utf-8") as file:
+        with open(self.file_name, "r+", encoding="utf-8") as file, open(self.source_file, "r+", encoding="utf-8") as src_file:
             data = json.load(file)
-            if data["src"]["task_id"] >= self.MAX_ITEM:
+            src_data = json.load(src_file)
+            if src_data["task_id"] >= self.MAX_ITEM:
                 raise TaskLimitError(int(self.MAX_ITEM))
             task = Task(task_title, status=status)
 
-            if len(data["src"]["del_task_id"]) != 0:
-                data[self.TASK_STATUS[status]][data["src"]["del_task_id"].pop()] = self.__date_to_str(task.__dict__)
+            if len(src_data["del_task_id"]) != 0:
+                data[self.TASK_STATUS[status]][src_data["del_task_id"].pop()] = self.__date_to_str(task.__dict__)
             else:
-                data[self.TASK_STATUS[status]][data["src"]["task_id"]] = self.__date_to_str(task.__dict__)
-                data["src"]["task_id"] += 1
-            file.seek(0)
-            json.dump(data, file, ensure_ascii=False, indent=4)
+                data[self.TASK_STATUS[status]][src_data["task_id"]] = self.__date_to_str(task.__dict__)
+                src_data["task_id"] += 1
+            self.__dump_json(file, data)
+            self.__dump_json(src_file, src_data)
     
     def update(self, task_id: int, task_description: str = None, task_title: str = None) -> None:
         task_id = self.__check_id(task_id)
@@ -102,12 +107,13 @@ class TaskJsonHandler:
     
     def delete(self, task_id: int) -> None:
         task_id = self.__check_id(task_id)
-        with open(self.file_name, "r+", encoding="utf-8") as file:
+        with open(self.file_name, "r+", encoding="utf-8") as file, open(self.source_file, "r+", encoding="utf-8") as src_file:
             data = json.load(file)
             not_find_task = True
             for status in data:
                 if task_id in data[status]:
-                    data["src"]["del_task_id"].append(task_id)
+                    src_data = json.load(src_file)
+                    src_data["del_task_id"].append(task_id)
                     del data[status][task_id]
                     not_find_task = False
                     break
@@ -115,6 +121,7 @@ class TaskJsonHandler:
                 raise ValueError(f"The provided ID does not exist in the database.")
 
             self.__dump_json(file, data)
+            self.__dump_json(src_file, src_data)
     
     def __mark_task_status(self, task_id: int, target_status: int) -> None:
         task_id = self.__check_id(task_id)
@@ -174,6 +181,8 @@ if __name__ == "__main__":
             if data[1] == list(commands.keys())[-1] and len(data) - 2 in range(commands[data[1]][1],commands[data[1]][2]+1):
                 task_handler.update(data[2], task_title=data[3])
             else:
-                commands[data[1]][0](*data[2:])
+                result = commands[data[1]][0](*data[2:])
+                if result:
+                    print(result)
     except Exception as e:
         print(e)
