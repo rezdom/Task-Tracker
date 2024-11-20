@@ -25,7 +25,7 @@ class TaskJsonHandler:
     
     def __create_file(self) -> None:
         if self.__file_not_exists():
-            obj = dict(in_progress = dict(), todo = dict(), done = dict())
+            obj = dict(todo = dict(), in_progress = dict(), done = dict())
             src_obj = dict(task_id = 0, del_task_id = [])
             with open(self.file_name, "w", encoding="utf-8") as file, open(self.source_file, "w", encoding="utf-8") as src_file:
                 json.dump(obj, file, ensure_ascii=False, indent=4)
