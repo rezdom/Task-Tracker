@@ -6,11 +6,11 @@ from getpass import getuser
 from datetime import datetime
 from typing import TextIO, Optional
 
-from utils.task import Task
-from utils.app_exeptions import TaskLimitError
+from source.utils.task import Task
+from source.utils.app_exeptions import TaskLimitError
 
 class TaskJsonHandler:
-    SOURCE_PATH = join("..","data")
+    SOURCE_PATH = join("data")
     TASK_STATUS = {0: "todo", 1: "in_progress", 2: "done"}
     MAX_ITEM = 1e4
 
@@ -66,6 +66,38 @@ class TaskJsonHandler:
         #preventing leftover data from being appended after updating the JSON.
         file.truncate()
     
+    @staticmethod
+    def _print_add_success(title: str, status: str, task_id: int) -> None:
+        print(
+            f"\033[1;32mTask successfully added!\033[0m\n\n"
+            f"Task id: {task_id}\n"
+            f"Task Title: {title}\n"
+            f"Task Status: {status}\n\n"
+            f"Use the \033[1m'list [--status]'\033[0m command to view all tasks."
+        )
+    
+    @staticmethod
+    def _print_update_success(description_flag: bool, title_flag: bool) -> None:
+        print(
+            f"\033[1;32mTask successfully updated!\033[0m\n\n"
+            f"Title: {"updated" if title_flag else "not updated"}\n"
+            f"Description: {"updated" if description_flag else "not updated"}\n\n"
+            f"Use the \033[1m'list [--status]'\033[0m command to view all tasks."
+        )
+    
+    @staticmethod
+    def _print_delete_success(task_id: int) -> None:
+        print(
+            f"\033[1;32mThe task with id{task_id} has been successfully deleted!\033[0m\n"
+        )
+    
+    @staticmethod
+    def _print_mark_success(status: str) -> None:
+        print(
+            f"\033[1;32mThe task was successfully marked in the list as '{status}'!\033[0m"
+        )
+    
+    
     def add(self, task_title: str, status: int = 0) -> None:
         with open(self.file_name, "r+", encoding="utf-8") as file, open(self.source_file, "r+", encoding="utf-8") as src_file:
             data = json.load(file)
@@ -75,12 +107,15 @@ class TaskJsonHandler:
             task = Task(task_title, status=status)
 
             if len(src_data["del_task_id"]) != 0:
-                data[self.TASK_STATUS[status]][src_data["del_task_id"].pop()] = self.__date_to_str(task.__dict__)
+                task_id = src_data["del_task_id"].pop()
             else:
-                data[self.TASK_STATUS[status]][src_data["task_id"]] = self.__date_to_str(task.__dict__)
+                task_id = src_data["task_id"]
                 src_data["task_id"] += 1
+            print(task_id)
+            data[self.TASK_STATUS[status]][task_id] = self.__date_to_str(task.__dict__)
             self.__dump_json(file, data)
             self.__dump_json(src_file, src_data)
+            self._print_add_success(task_title, self.TASK_STATUS[status], int(task_id))
     
     def update(self, task_id: int, task_description: str = None, task_title: str = None) -> None:
         task_id = self.__check_id(task_id)
@@ -97,13 +132,18 @@ class TaskJsonHandler:
             if task_description is None and task_title is None:
                 raise ValueError("Arguments were not provided.")
             else:
+                description_flag = False
+                title_flag = False
                 if task_description is not None:
+                    description_flag = True
                     task.description = task_description
                 if task_title is not None:
+                    title_flag = True
                     task.title = task_title
                 task.updatedAt = datetime.now()
             data[self.TASK_STATUS[task.status]][task_id] = self.__date_to_str(task.__dict__)
             self.__dump_json(file, data)
+            self._print_update_success(description_flag, title_flag)
     
     def delete(self, task_id: int) -> None:
         task_id = self.__check_id(task_id)
@@ -117,11 +157,12 @@ class TaskJsonHandler:
                     del data[status][task_id]
                     not_find_task = False
                     break
-            if not_find_task is None:
+            if not_find_task:
                 raise ValueError(f"The provided ID does not exist in the database.")
 
             self.__dump_json(file, data)
             self.__dump_json(src_file, src_data)
+            self._print_delete_success(int(task_id))
     
     def __mark_task_status(self, task_id: int, target_status: int) -> None:
         task_id = self.__check_id(task_id)
@@ -148,6 +189,7 @@ class TaskJsonHandler:
             data[self.TASK_STATUS[task.status]][task_id] = self.__date_to_str(task.__dict__)
 
             self.__dump_json(file, data)
+            self._print_mark_success(self.TASK_STATUS[target_status])
     
     def mark_in_progress(self, task_id: int) -> None:
         self.__mark_task_status(task_id, 1)
@@ -155,7 +197,7 @@ class TaskJsonHandler:
     def mark_done(self, task_id: int) -> None:
         self.__mark_task_status(task_id, 2)
     
-    def get_task_list(self, target_status: str = None) -> Optional[dict]:
+    def get_task_list(self, target_status: str = None) -> dict:
         with open(self.file_name, "r", encoding="utf-8") as file:
             data = json.load(file)
             if target_status is None:
