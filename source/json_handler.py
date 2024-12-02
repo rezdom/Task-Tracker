@@ -2,6 +2,7 @@ import json
 from os import listdir
 from os.path import join, basename
 import sys
+
 from getpass import getuser
 from datetime import datetime
 from typing import TextIO, Optional
