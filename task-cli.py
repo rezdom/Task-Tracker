@@ -1,7 +1,5 @@
 from argparse import ArgumentParser, SUPPRESS, RawTextHelpFormatter
 import sys
-from pprint import pprint
-pprint(sys.path)
 from source.json_handler import TaskJsonHandler
 from source.display_for_task import welcome_msg, print_all_status, print_one_status
 
