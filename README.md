@@ -35,6 +35,8 @@ This project is a simple task manager for working via command line. It allows yo
 4. To find out all available commands and how to work with them, run the following command:
     ```bash
     python task-cli.py -h
+## technical specifications:
+https://roadmap.sh/projects/task-tracker
 
 ## License:
 
