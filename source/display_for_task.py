@@ -20,7 +20,7 @@ def print_all_status(data: dict) -> None:
     task_separation = "-" * 32
     print("\033[H\033[J")
     for status in data:
-        print(f"\033[1m'{status}' tasks:\033[0m")
+        print(f"\033[1;32m'{status}' tasks:\033[0m")
         if not data[status]:
             print(f"\nTasks not found\n")
             if not (status is list(data)[-1]):
@@ -36,14 +36,14 @@ def print_all_status(data: dict) -> None:
                 datetime.strptime(value["updatedAt"], "%d-%m-%Y, %H:%M:%S"),
                 value["status"]
             )
-            print(f"\n  ●id{key}\n{task}\n")
+            print(f"\n  \033[1;37m●id{key}\n{task}\033[0m\n")
         if not (status is list(data)[-1]):
             print(module_separation)
     
 def print_one_status(data:dict, target_status: str) -> None:
     task_separation = "-" * 32 
     print("\033[H\033[J")
-    print(f"\033[1m'{target_status}' tasks:\033[0m\n")
+    print(f"\033[1;32m'{target_status}' tasks:\033[0m\n")
     if not data:
         print(f"Tasks not found")
     for item in data:
@@ -56,7 +56,7 @@ def print_one_status(data:dict, target_status: str) -> None:
             datetime.strptime(data[item]["updatedAt"], "%d-%m-%Y, %H:%M:%S"),
             data[item]["status"]
         )
-        print(f"\n  ●id{item}\n{task}\n")
+        print(f"\n  \033[1;37m●id{item}\n{task}\033[0m\n")
 
 if __name__ == "__main__":
     data = {
