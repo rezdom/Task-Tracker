@@ -21,7 +21,7 @@ This project is a simple task manager for working via command line. It allows yo
 
 ---
 
-## Как запустить:
+## How to start:
 
 1. This project was developed in Python 3.12.6.
 2. Clone the repository:
